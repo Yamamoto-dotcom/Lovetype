@@ -4,9 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ラブタイプ相性診断（MVP）</title>
-  <meta name="description" content="2人のラブタイプを選ぶだけ。レーダーチャートと診断結果を表示。" />
+  <meta name="description" content="2人のラブタイプを選ぶだけ。レーダーチャートと診断がすぐ出ます。" />
   <link rel="stylesheet" href="./style.css" />
-  <!-- Chart.js v4 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -33,25 +32,25 @@
     </section>
 
     <section id="result" class="card hidden">
-      <h2>結果</h2>
+      <h2>診断結果</h2>
       <canvas id="radar" width="400" height="400"></canvas>
 
       <div class="result-block">
         <div class="macro">
-          <div><strong>マクロ分類:</strong> <span id="macroTop">-</span>
+          <div><strong>ベース気質:</strong> <span id="macroTop">-</span>
             <span id="macroHybrid" class="hybrid"></span>
           </div>
-          <div class="candidates"><strong>候補距離:</strong> <span id="candidates">-</span></div>
+          <!-- ※「候補距離」は完全削除 -->
         </div>
 
         <div class="micro">
-          <div><strong>サブタイプ:</strong> <span id="microType">-</span> <span id="quadrant" class="tag"></span></div>
+          <div><strong>タイプ:</strong> <span id="microType">-</span></div>
           <div class="catch" id="catch"></div>
           <div class="body" id="body"></div>
         </div>
 
         <div class="confidence">
-          <label>確信度</label>
+          <label>自信度</label>
           <div class="bar"><div id="barFill" class="fill" style="width:0%"></div></div>
           <span id="confNum">0%</span>
         </div>
