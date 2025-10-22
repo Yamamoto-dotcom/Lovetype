@@ -1,7 +1,10 @@
 const qs = (sel) => document.querySelector(sel);
 
+// ここで既定のAPI URLを埋め込む（あなたのRender URL）
+const DEFAULT_API_BASE = "https://lovetype.onrender.com";
+
 const state = {
-  apiBase: localStorage.getItem("apiBase") || "",
+  apiBase: localStorage.getItem("apiBase") || DEFAULT_API_BASE,
   chart: null,
   types: [],
 };
@@ -12,16 +15,31 @@ function setNote(msg) {
   el.textContent = msg || "";
 }
 
+function toggleApiCard() {
+  const card = qs("#apiCard");
+  if (!card) return;
+  card.classList.toggle("hidden");
+  if (!card.classList.contains("hidden")) {
+    qs("#apiBase").value = state.apiBase;
+  }
+}
+
 function saveApi() {
-  const val = qs("#apiBase").value.trim();
-  state.apiBase = val.replace(/\/+$/, ""); // 末尾スラッシュ除去
+  const val = qs("#apiBase").value.trim().replace(/\/+$/, "");
+  if (!val) {
+    setNote("API URL を入力してください。");
+    return;
+  }
+  state.apiBase = val;
   localStorage.setItem("apiBase", state.apiBase);
   setNote("API URL を保存しました。");
-  if (state.apiBase) loadTypes();
+  // 保存後はカードを閉じる
+  toggleApiCard();
+  // すぐにタイプ一覧を再読込
+  loadTypes();
 }
 
 async function loadTypes() {
-  if (!state.apiBase) return;
   const selA = qs("#typeA");
   const selB = qs("#typeB");
   selA.innerHTML = `<option>読み込み中...</option>`;
@@ -30,8 +48,9 @@ async function loadTypes() {
     const res = await fetch(`${state.apiBase}/types`);
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) {
-      selA.innerHTML = `<option value="">（タイプが読み込めません：Step3でファイルを配置し、Renderを再デプロイしてください）</option>`;
+      selA.innerHTML = `<option value="">（タイプが読み込めません。APIを確認してください）</option>`;
       selB.innerHTML = selA.innerHTML;
+      setNote("タイプ一覧が取得できません。/types を確認してください。");
       return;
     }
     state.types = arr;
@@ -76,7 +95,6 @@ function ensureChart(data) {
 function renderResult(payload) {
   qs("#result").classList.remove("hidden");
 
-  // レーダー
   const labels = ["共感","調和","依存","刺激","信頼"];
   const dataset = {
     labels,
@@ -89,7 +107,6 @@ function renderResult(payload) {
   };
   ensureChart(dataset);
 
-  // マクロ
   qs("#macroTop").textContent = payload.macro.top || "-";
   const second = payload.macro.second;
   const margin = payload.macro.margin;
@@ -97,13 +114,11 @@ function renderResult(payload) {
   const candStr = (payload.macro.candidates || []).map(c => `${c.name}:${c.distance}`).join(" / ");
   qs("#candidates").textContent = candStr || "-";
 
-  // マイクロ
   qs("#microType").textContent = payload.micro.type || "-";
   qs("#quadrant").textContent = payload.micro.quadrant ? `象限 ${payload.micro.quadrant}` : "";
   qs("#catch").textContent = payload.copy.catch || "";
   qs("#body").textContent = payload.copy.body || "";
 
-  // 確信度
   let conf = Number(payload.confidence || 0);
   conf = Math.max(0, Math.min(100, conf));
   qs("#barFill").style.width = conf + "%";
@@ -113,7 +128,6 @@ function renderResult(payload) {
 async function runScore() {
   const a = qs("#typeA").value;
   const b = qs("#typeB").value;
-  if (!state.apiBase) { setNote("API URL を設定してください。"); return; }
   if (!a || !b) { setNote("タイプA/Bを選択してください。"); return; }
   setNote("診断中…");
   try {
@@ -135,12 +149,20 @@ async function runScore() {
 }
 
 function init() {
-  // API URL 初期表示
-  qs("#apiBase").value = state.apiBase;
-  qs("#saveApi").addEventListener("click", saveApi);
+  // 既定URLをそのまま使ってタイプを読み込む
+  const apiInput = qs("#apiBase");
+  if (apiInput) apiInput.value = state.apiBase;
+
+  const toggleBtn = qs("#toggleApi");
+  if (toggleBtn) toggleBtn.addEventListener("click", toggleApiCard);
+
+  const saveBtn = qs("#saveApi");
+  if (saveBtn) saveBtn.addEventListener("click", saveApi);
+
   qs("#run").addEventListener("click", runScore);
 
-  if (state.apiBase) loadTypes();
+  loadTypes();
 }
 
+document.addEventListener("DOMContentLoaded", init);
 document.addEventListener("DOMContentLoaded", init);
