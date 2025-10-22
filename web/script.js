@@ -1,10 +1,10 @@
 const qs = (sel) => document.querySelector(sel);
 
-// ここで既定のAPI URLを埋め込む（あなたのRender URL）
-const DEFAULT_API_BASE = "https://lovetype.onrender.com";
+// 固定API（ユーザーには見せません）
+const API_BASE = "https://lovetype.onrender.com";
 
 const state = {
-  apiBase: localStorage.getItem("apiBase") || DEFAULT_API_BASE,
+  apiBase: API_BASE,
   chart: null,
   types: [],
 };
@@ -13,30 +13,6 @@ function setNote(msg) {
   const el = qs("#inputNote");
   if (!el) return;
   el.textContent = msg || "";
-}
-
-function toggleApiCard() {
-  const card = qs("#apiCard");
-  if (!card) return;
-  card.classList.toggle("hidden");
-  if (!card.classList.contains("hidden")) {
-    qs("#apiBase").value = state.apiBase;
-  }
-}
-
-function saveApi() {
-  const val = qs("#apiBase").value.trim().replace(/\/+$/, "");
-  if (!val) {
-    setNote("API URL を入力してください。");
-    return;
-  }
-  state.apiBase = val;
-  localStorage.setItem("apiBase", state.apiBase);
-  setNote("API URL を保存しました。");
-  // 保存後はカードを閉じる
-  toggleApiCard();
-  // すぐにタイプ一覧を再読込
-  loadTypes();
 }
 
 async function loadTypes() {
@@ -48,9 +24,9 @@ async function loadTypes() {
     const res = await fetch(`${state.apiBase}/types`);
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) {
-      selA.innerHTML = `<option value="">（タイプが読み込めません。APIを確認してください）</option>`;
+      selA.innerHTML = `<option value="">（タイプが読み込めません）</option>`;
       selB.innerHTML = selA.innerHTML;
-      setNote("タイプ一覧が取得できません。/types を確認してください。");
+      setNote("タイプ一覧が取得できません。APIの稼働を確認してください。");
       return;
     }
     state.types = arr;
@@ -61,7 +37,7 @@ async function loadTypes() {
   } catch (e) {
     selA.innerHTML = `<option value="">（通信エラー）</option>`;
     selB.innerHTML = `<option value="">（通信エラー）</option>`;
-    setNote("APIに接続できません。URLやCORS、Renderの稼働を確認してください。");
+    setNote("通信エラーです。時間をおいて再実行してください。");
   }
 }
 
@@ -144,25 +120,13 @@ async function runScore() {
     setNote("");
     renderResult(payload);
   } catch (e) {
-    setNote("通信エラーです。API URL や Render の稼働状況を確認してください。");
+    setNote("通信エラーです。時間をおいて再実行してください。");
   }
 }
 
 function init() {
-  // 既定URLをそのまま使ってタイプを読み込む
-  const apiInput = qs("#apiBase");
-  if (apiInput) apiInput.value = state.apiBase;
-
-  const toggleBtn = qs("#toggleApi");
-  if (toggleBtn) toggleBtn.addEventListener("click", toggleApiCard);
-
-  const saveBtn = qs("#saveApi");
-  if (saveBtn) saveBtn.addEventListener("click", saveApi);
-
   qs("#run").addEventListener("click", runScore);
-
   loadTypes();
 }
 
-document.addEventListener("DOMContentLoaded", init);
 document.addEventListener("DOMContentLoaded", init);
