@@ -84,12 +84,16 @@ function renderResult(payload) {
   };
   ensureChart(dataset);
 
-  // ベース気質（数値は出さず、ハイブリッドはやわらか表現のみ）
+  // ベース気質：ハイブリッドは“相手名のみ”を表示（数値なし）
   qs("#macroTop").textContent = payload.macro.top || "-";
-  const second = payload.macro.second;
-  qs("#macroHybrid").textContent = second ? "（ハイブリッド気味）" : "";
+  const second = (payload.macro.second || "").trim();
+  qs("#macroHybrid").textContent = second ? `（ハイブリッド：${second}）` : "";
 
-  // タイプ名＋本文（象限は表示しない）
+  // 念のため、古いHTMLに残っている「候補距離」ブロックを強制的に削除
+  const candEl = document.querySelector(".candidates");
+  if (candEl) candEl.remove();
+
+  // タイプ名＋本文（象限は非表示）
   qs("#microType").textContent = payload.micro.type || "-";
   qs("#catch").textContent = payload.copy.catch || "";
   qs("#body").textContent = payload.copy.body || "";
@@ -128,5 +132,7 @@ function init() {
   qs("#run").addEventListener("click", runScore);
   loadTypes();
 }
+
+document.addEventListener("DOMContentLoaded", init);
 
 document.addEventListener("DOMContentLoaded", init);
