@@ -1,0 +1,5 @@
+{
+  "weights": { "dyn": 1.0, "sta": 1.0, "bond": 1.0, "trust": 0.4 },
+  "trust_high": 0.55,
+  "hybrid_margin": 0.06
+}
