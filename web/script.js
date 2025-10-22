@@ -24,9 +24,9 @@ async function loadTypes() {
     const res = await fetch(`${state.apiBase}/types`);
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) {
-      selA.innerHTML = `<option value="">（タイプが読み込めません）</option>`;
+      selA.innerHTML = `<option value="">（タイプを読み込めませんでした）</option>`;
       selB.innerHTML = selA.innerHTML;
-      setNote("タイプ一覧が取得できません。APIの稼働を確認してください。");
+      setNote("タイプ一覧が取得できません。時間をおいてお試しください。");
       return;
     }
     state.types = arr;
@@ -37,7 +37,7 @@ async function loadTypes() {
   } catch (e) {
     selA.innerHTML = `<option value="">（通信エラー）</option>`;
     selB.innerHTML = `<option value="">（通信エラー）</option>`;
-    setNote("通信エラーです。時間をおいて再実行してください。");
+    setNote("通信に失敗しました。時間をおいて再実行してください。");
   }
 }
 
@@ -71,6 +71,7 @@ function ensureChart(data) {
 function renderResult(payload) {
   qs("#result").classList.remove("hidden");
 
+  // レーダー
   const labels = ["共感","調和","依存","刺激","信頼"];
   const dataset = {
     labels,
@@ -83,18 +84,17 @@ function renderResult(payload) {
   };
   ensureChart(dataset);
 
+  // ベース気質（数値は出さず、ハイブリッドはやわらか表現のみ）
   qs("#macroTop").textContent = payload.macro.top || "-";
   const second = payload.macro.second;
-  const margin = payload.macro.margin;
-  qs("#macroHybrid").textContent = (second && margin !== null && margin <= 0.06) ? `（ハイブリッド傾向: ${second} / Δ=${margin}）` : "";
-  const candStr = (payload.macro.candidates || []).map(c => `${c.name}:${c.distance}`).join(" / ");
-  qs("#candidates").textContent = candStr || "-";
+  qs("#macroHybrid").textContent = second ? "（ハイブリッド気味）" : "";
 
+  // タイプ名＋本文（象限は表示しない）
   qs("#microType").textContent = payload.micro.type || "-";
-  qs("#quadrant").textContent = payload.micro.quadrant ? `象限 ${payload.micro.quadrant}` : "";
   qs("#catch").textContent = payload.copy.catch || "";
   qs("#body").textContent = payload.copy.body || "";
 
+  // 自信度
   let conf = Number(payload.confidence || 0);
   conf = Math.max(0, Math.min(100, conf));
   qs("#barFill").style.width = conf + "%";
@@ -120,7 +120,7 @@ async function runScore() {
     setNote("");
     renderResult(payload);
   } catch (e) {
-    setNote("通信エラーです。時間をおいて再実行してください。");
+    setNote("通信に失敗しました。時間をおいて再実行してください。");
   }
 }
 
