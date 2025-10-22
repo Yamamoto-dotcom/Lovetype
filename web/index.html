@@ -13,17 +13,21 @@
   <header class="container">
     <h1>ラブタイプ相性診断</h1>
     <p class="sub">2人のタイプを選んで「診断する」を押してください。</p>
+    <div style="text-align:right">
+      <button id="toggleApi" title="APIの接続先を変更">⚙ API設定</button>
+    </div>
   </header>
 
   <main class="container">
-    <section class="card">
-      <h2>設定</h2>
+    <!-- API設定（既定では非表示。必要なときだけ開く） -->
+    <section id="apiCard" class="card hidden">
+      <h2>API設定</h2>
       <div class="row">
         <label for="apiBase">API URL</label>
         <input id="apiBase" type="url" placeholder="https://xxx.onrender.com" />
         <button id="saveApi">保存</button>
       </div>
-      <small class="hint">保存すると次回以降は自動で読み込まれます（ローカル保存）。</small>
+      <small class="hint">既定値は埋め込まれています。変更が必要な場合のみ編集してください。</small>
     </section>
 
     <section class="card">
@@ -74,5 +78,7 @@
   </footer>
 
   <script src="./script.js"></script>
+</body>
+</html>
 </body>
 </html>
