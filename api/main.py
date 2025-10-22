@@ -1,17 +1,17 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any
-# 相対インポート -> 絶対インポート（/api を作業ルートで起動するため）
+
 from classifier import (
     get_types,
     classify_pair,
     health_status,
 )
 
-app = FastAPI(title="Lovetype Compatibility API", version="0.1.0")
+app = FastAPI(title="Lovetype Compatibility API", version="0.1.1")
 
-# CORS: MVPでは全許可
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,22 +23,29 @@ class ScoreRequest(BaseModel):
     typeA: str
     typeB: str
 
+@app.get("/")
+def root() -> Dict[str, Any]:
+    return {"service": "Lovetype Compatibility API", "ok": True, "endpoints": ["/health", "/types", "/score"]}
+
+@app.get("/favicon.ico")
+def favicon() -> Dict[str, str]:
+    return {"ok": "no favicon"}
+
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok", **health_status()}
 
 @app.get("/types")
-def types() -> List[str]:
-    types_list = get_types()
-    if not types_list:
-        return []
-    return types_list
+def types() -> JSONResponse:
+    types_list = get_types() or []
+    # 明示的に charset=utf-8 を指定
+    return JSONResponse(content=types_list, media_type="application/json; charset=utf-8")
 
 @app.post("/score")
-def score(req: ScoreRequest) -> Dict[str, Any]:
+def score(req: ScoreRequest) -> JSONResponse:
     try:
         result = classify_pair(req.typeA, req.typeB)
-        return result
+        return JSONResponse(content=result, media_type="application/json; charset=utf-8")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except FileNotFoundError as e:
