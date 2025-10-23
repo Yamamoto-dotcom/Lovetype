@@ -77,30 +77,34 @@ function splitBody(text) {
 }
 
 function renderResult(payload) {
+  // タイトル＆キャッチ
   const macroTop = payload?.macro?.top || "-";
   const micro = payload?.micro?.type || "-";
   $("#summaryTitle").textContent = `${macroTop} / ${micro}`;
   $("#summaryCatch").textContent = payload?.copy?.catch || "";
 
+  // ハイブリッド表示は「文字のみ」。Δや候補は出さない
   const second = payload?.macro?.second;
   const margin = payload?.macro?.margin;
-  const cand = (payload?.macro?.candidates || []).map(c => `${c.name}:${c.distance}`).join(" / ");
-  $("#summaryMeta").textContent = (second && margin !== null && margin <= 0.06)
-    ? `ハイブリッド傾向：${second}（Δ=${margin}）｜候補 ${cand}`
-    : `候補 ${cand}`;
+  $("#summaryMeta").textContent =
+    (second && margin !== null && margin <= 0.06) ? "ハイブリッド傾向" : "";
 
+  // レーダー
   ensureRadar(payload.scores || {共感:0,調和:0,依存:0,刺激:0,信頼:0});
 
+  // 本文 → 強み/注意
   const body = payload?.copy?.body || "";
   const [strongs, cautions] = splitBody(body);
   $("#cardStrengths").textContent = strongs || "—";
   $("#cardCautions").textContent = cautions || "—";
 
+  // 確信度（ハイブリッドの括弧表示は廃止）
   let conf = Number(payload?.confidence || 0);
   conf = Math.max(0, Math.min(100, conf));
   $("#barFill").style.width = conf + "%";
   $("#confNum").textContent = conf + "%";
-  $("#hybrid").textContent = (second && margin !== null && margin <= 0.06) ? "（ハイブリッド）" : "";
+  const hybridSpan = $("#hybrid");
+  if (hybridSpan) hybridSpan.textContent = ""; // 何も表示しない
 }
 
 async function runScore() {
