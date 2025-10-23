@@ -1,52 +1,37 @@
-// 状態
-const state = {
-  apiBase: localStorage.getItem("apiBase") || "",
-  chart: null,
-  types: []
-};
+// 固定API（config.js で window.API_BASE を定義）
+const API = (window.API_BASE || "").replace(/\/+$/, "");
 
 const $ = (s) => document.querySelector(s);
-const $$ = (s) => Array.from(document.querySelectorAll(s));
-
 function setNote(msg) { const el = $("#note"); if (el) el.textContent = msg || ""; }
 
-// API URL 保存
-function saveApi() {
-  const val = $("#apiBase").value.trim().replace(/\/+$/, "");
-  state.apiBase = val;
-  localStorage.setItem("apiBase", state.apiBase);
-  setNote("API URL を保存しました。");
-  if (state.apiBase) loadTypes();
-}
+const state = { chart: null, types: [] };
 
-// タイプ一覧の読み込み
 async function loadTypes() {
-  if (!state.apiBase) { setNote("API URL を設定してください。"); return; }
+  if (!API) { setNote("APIのURLが設定されていません。/web/config.js の window.API_BASE を設定してください。"); return; }
   const selA = $("#typeA"), selB = $("#typeB");
   selA.innerHTML = `<option value="" disabled selected>読み込み中...</option>`;
   selB.innerHTML = selA.innerHTML;
   try {
-    const res = await fetch(`${state.apiBase}/types`);
+    const res = await fetch(`${API}/types`);
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) {
-      selA.innerHTML = `<option value="" disabled selected>（タイプが読み込めません）</option>`;
+      setNote("タイプが読み込めません。APIのデータ配置やRender稼働を確認してください。");
+      selA.innerHTML = `<option value="" disabled selected>（読み込み不可）</option>`;
       selB.innerHTML = selA.innerHTML;
-      setNote("Step3 のデータ設置・Render再起動を確認してください。");
       return;
     }
     state.types = arr;
-    const opts = [`<option value="" disabled selected>あなたのラブタイプを選択</option>`]
+    const optsA = [`<option value="" disabled selected>あなたのラブタイプを選択</option>`]
       .concat(arr.map(t => `<option value="${t}">${t}</option>`)).join("");
-    selA.innerHTML = opts;
-    selB.innerHTML = [`<option value="" disabled selected>お相手のラブタイプを選択</option>`]
+    const optsB = [`<option value="" disabled selected>お相手のラブタイプを選択</option>`]
       .concat(arr.map(t => `<option value="${t}">${t}</option>`)).join("");
+    selA.innerHTML = optsA; selB.innerHTML = optsB;
     setNote("");
   } catch (e) {
-    setNote("APIに接続できません。URLやCORS、Renderの稼働を確認してください。");
+    setNote("APIに接続できません。RenderのURL/CORS/稼働状況を確認してください。");
   }
 }
 
-// レーダーチャート
 function ensureRadar(scores) {
   const ctx = $("#radarCanvas");
   const data = {
@@ -75,15 +60,10 @@ function ensureRadar(scores) {
     },
     plugins: { legend: { display: false } }
   };
-  if (state.chart) {
-    state.chart.data = data;
-    state.chart.update();
-  } else {
-    state.chart = new Chart(ctx, { type: "radar", data, options });
-  }
+  if (state.chart) { state.chart.data = data; state.chart.update(); }
+  else { state.chart = new Chart(ctx, { type: "radar", data, options }); }
 }
 
-// 本文を「強み/注意」にざっくり分割（記号や改行で分ける。なければ前半/後半）
 function splitBody(text) {
   if (!text) return ["", ""];
   const dividers = ["\n—\n", "\n---\n", "\n◇\n", "\n■注意", "注意：", "【注意】"];
@@ -97,13 +77,11 @@ function splitBody(text) {
 }
 
 function renderResult(payload) {
-  // タイトル＆キャッチ
   const macroTop = payload?.macro?.top || "-";
   const micro = payload?.micro?.type || "-";
   $("#summaryTitle").textContent = `${macroTop} / ${micro}`;
   $("#summaryCatch").textContent = payload?.copy?.catch || "";
 
-  // ハイブリッドと候補
   const second = payload?.macro?.second;
   const margin = payload?.macro?.margin;
   const cand = (payload?.macro?.candidates || []).map(c => `${c.name}:${c.distance}`).join(" / ");
@@ -111,16 +89,13 @@ function renderResult(payload) {
     ? `ハイブリッド傾向：${second}（Δ=${margin}）｜候補 ${cand}`
     : `候補 ${cand}`;
 
-  // レーダー
   ensureRadar(payload.scores || {共感:0,調和:0,依存:0,刺激:0,信頼:0});
 
-  // 本文 → 強み/注意
   const body = payload?.copy?.body || "";
   const [strongs, cautions] = splitBody(body);
   $("#cardStrengths").textContent = strongs || "—";
   $("#cardCautions").textContent = cautions || "—";
 
-  // 確信度
   let conf = Number(payload?.confidence || 0);
   conf = Math.max(0, Math.min(100, conf));
   $("#barFill").style.width = conf + "%";
@@ -130,29 +105,28 @@ function renderResult(payload) {
 
 async function runScore() {
   const a = $("#typeA").value, b = $("#typeB").value;
-  if (!state.apiBase) { setNote("API URL を設定してください。"); return; }
+  if (!API) { setNote("APIのURLが設定されていません。/web/config.js を確認してください。"); return; }
   if (!a || !b) { setNote("タイプA/Bを選択してください。"); return; }
   setNote("診断中…");
   try {
-    const res = await fetch(`${state.apiBase}/score`, {
+    const res = await fetch(`${API}/score`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ typeA: a, typeB: b })
     });
     const payload = await res.json();
     if (!res.ok) { setNote(`エラー: ${payload.detail || "unknown"}`); return; }
-    setNote("");
-    renderResult(payload);
+    setNote(""); renderResult(payload);
   } catch {
-    setNote("通信エラーです。API URL や Render の稼働状況を確認してください。");
+    setNote("通信エラーです。Renderの稼働やCORSを確認してください。");
   }
 }
 
 function init() {
-  $("#apiBase").value = state.apiBase;
-  $("#saveApi").addEventListener("click", saveApi);
+  if (!API) { setNote("APIのURLが設定されていません。/web/config.js の window.API_BASE を設定してください。"); return; }
   $("#run").addEventListener("click", runScore);
-  if (state.apiBase) loadTypes();
+  loadTypes();
 }
 
+document.addEventListener("DOMContentLoaded", init);
 document.addEventListener("DOMContentLoaded", init);
