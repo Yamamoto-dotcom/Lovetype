@@ -1,113 +1,136 @@
-const qs = (sel) => document.querySelector(sel);
-
-// 固定API（ユーザーには見せません）
-const API_BASE = "https://lovetype.onrender.com";
-
+// 状態
 const state = {
-  apiBase: API_BASE,
+  apiBase: localStorage.getItem("apiBase") || "",
   chart: null,
-  types: [],
+  types: []
 };
 
-function setNote(msg) {
-  const el = qs("#inputNote");
-  if (!el) return;
-  el.textContent = msg || "";
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+function setNote(msg) { const el = $("#note"); if (el) el.textContent = msg || ""; }
+
+// API URL 保存
+function saveApi() {
+  const val = $("#apiBase").value.trim().replace(/\/+$/, "");
+  state.apiBase = val;
+  localStorage.setItem("apiBase", state.apiBase);
+  setNote("API URL を保存しました。");
+  if (state.apiBase) loadTypes();
 }
 
+// タイプ一覧の読み込み
 async function loadTypes() {
-  const selA = qs("#typeA");
-  const selB = qs("#typeB");
-  selA.innerHTML = `<option>読み込み中...</option>`;
-  selB.innerHTML = `<option>読み込み中...</option>`;
+  if (!state.apiBase) { setNote("API URL を設定してください。"); return; }
+  const selA = $("#typeA"), selB = $("#typeB");
+  selA.innerHTML = `<option value="" disabled selected>読み込み中...</option>`;
+  selB.innerHTML = selA.innerHTML;
   try {
     const res = await fetch(`${state.apiBase}/types`);
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) {
-      selA.innerHTML = `<option value="">（タイプを読み込めませんでした）</option>`;
+      selA.innerHTML = `<option value="" disabled selected>（タイプが読み込めません）</option>`;
       selB.innerHTML = selA.innerHTML;
-      setNote("タイプ一覧が取得できません。時間をおいてお試しください。");
+      setNote("Step3 のデータ設置・Render再起動を確認してください。");
       return;
     }
     state.types = arr;
-    const opts = arr.map(t => `<option value="${t}">${t}</option>`).join("");
+    const opts = [`<option value="" disabled selected>あなたのラブタイプを選択</option>`]
+      .concat(arr.map(t => `<option value="${t}">${t}</option>`)).join("");
     selA.innerHTML = opts;
-    selB.innerHTML = opts;
+    selB.innerHTML = [`<option value="" disabled selected>お相手のラブタイプを選択</option>`]
+      .concat(arr.map(t => `<option value="${t}">${t}</option>`)).join("");
     setNote("");
   } catch (e) {
-    selA.innerHTML = `<option value="">（通信エラー）</option>`;
-    selB.innerHTML = `<option value="">（通信エラー）</option>`;
-    setNote("通信に失敗しました。時間をおいて再実行してください。");
+    setNote("APIに接続できません。URLやCORS、Renderの稼働を確認してください。");
   }
 }
 
-function ensureChart(data) {
-  const ctx = qs("#radar").getContext("2d");
+// レーダーチャート
+function ensureRadar(scores) {
+  const ctx = $("#radarCanvas");
+  const data = {
+    labels: ["共感","調和","依存","刺激","信頼"],
+    datasets: [{
+      label: "合算スコア",
+      data: [scores["共感"], scores["調和"], scores["依存"], scores["刺激"], scores["信頼"]],
+      borderWidth: 2,
+      fill: true,
+      borderColor: "rgba(255,106,165,0.9)",
+      backgroundColor: "rgba(255,106,165,0.25)",
+      pointBackgroundColor: "rgba(255,106,165,1)"
+    }]
+  };
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      r: {
+        suggestedMin: 0, suggestedMax: 200,
+        grid: { color: "rgba(0,0,0,.14)" },
+        angleLines: { color: "rgba(0,0,0,.18)" },
+        pointLabels: { color: "rgba(0,0,0,.55)", font: { size: 12 } },
+        ticks: { backdropColor: "transparent", showLabelBackdrop: false, color: "rgba(0,0,0,.55)" }
+      }
+    },
+    plugins: { legend: { display: false } }
+  };
   if (state.chart) {
     state.chart.data = data;
     state.chart.update();
-    return;
+  } else {
+    state.chart = new Chart(ctx, { type: "radar", data, options });
   }
-  state.chart = new Chart(ctx, {
-    type: "radar",
-    data,
-    options: {
-      responsive: true,
-      scales: {
-        r: {
-          suggestedMin: 0,
-          suggestedMax: 200,
-          grid: { color: "#30364a" },
-          angleLines: { color: "#30364a" },
-          pointLabels: { color: "#aab1c5", font: { size: 12 } },
-          ticks: { color: "#aab1c5", backdropColor: "transparent", showLabelBackdrop: false }
-        }
-      },
-      plugins: { legend: { display: false } }
-    }
-  });
+}
+
+// 本文を「強み/注意」にざっくり分割（記号や改行で分ける。なければ前半/後半）
+function splitBody(text) {
+  if (!text) return ["", ""];
+  const dividers = ["\n—\n", "\n---\n", "\n◇\n", "\n■注意", "注意：", "【注意】"];
+  for (const d of dividers) {
+    const idx = text.indexOf(d);
+    if (idx > 0) return [text.slice(0, idx).trim(), text.slice(idx).replace(d, "").trim()];
+  }
+  if (text.length <= 140) return [text, ""];
+  const mid = Math.floor(text.length / 2);
+  return [text.slice(0, mid).trim(), text.slice(mid).trim()];
 }
 
 function renderResult(payload) {
-  qs("#result").classList.remove("hidden");
+  // タイトル＆キャッチ
+  const macroTop = payload?.macro?.top || "-";
+  const micro = payload?.micro?.type || "-";
+  $("#summaryTitle").textContent = `${macroTop} / ${micro}`;
+  $("#summaryCatch").textContent = payload?.copy?.catch || "";
+
+  // ハイブリッドと候補
+  const second = payload?.macro?.second;
+  const margin = payload?.macro?.margin;
+  const cand = (payload?.macro?.candidates || []).map(c => `${c.name}:${c.distance}`).join(" / ");
+  $("#summaryMeta").textContent = (second && margin !== null && margin <= 0.06)
+    ? `ハイブリッド傾向：${second}（Δ=${margin}）｜候補 ${cand}`
+    : `候補 ${cand}`;
 
   // レーダー
-  const labels = ["共感","調和","依存","刺激","信頼"];
-  const dataset = {
-    labels,
-    datasets: [{
-      label: "合算スコア",
-      data: [payload.scores["共感"], payload.scores["調和"], payload.scores["依存"], payload.scores["刺激"], payload.scores["信頼"]],
-      borderWidth: 2,
-      fill: true
-    }]
-  };
-  ensureChart(dataset);
+  ensureRadar(payload.scores || {共感:0,調和:0,依存:0,刺激:0,信頼:0});
 
-  // ベース気質：ハイブリッドは“相手名のみ”を表示（数値なし）
-  qs("#macroTop").textContent = payload.macro.top || "-";
-  const second = (payload.macro.second || "").trim();
-  qs("#macroHybrid").textContent = second ? `（ハイブリッド：${second}）` : "";
+  // 本文 → 強み/注意
+  const body = payload?.copy?.body || "";
+  const [strongs, cautions] = splitBody(body);
+  $("#cardStrengths").textContent = strongs || "—";
+  $("#cardCautions").textContent = cautions || "—";
 
-  // 念のため、古いHTMLに残っている「候補距離」ブロックを強制的に削除
-  const candEl = document.querySelector(".candidates");
-  if (candEl) candEl.remove();
-
-  // タイプ名＋本文（象限は非表示）
-  qs("#microType").textContent = payload.micro.type || "-";
-  qs("#catch").textContent = payload.copy.catch || "";
-  qs("#body").textContent = payload.copy.body || "";
-
-  // 自信度
-  let conf = Number(payload.confidence || 0);
+  // 確信度
+  let conf = Number(payload?.confidence || 0);
   conf = Math.max(0, Math.min(100, conf));
-  qs("#barFill").style.width = conf + "%";
-  qs("#confNum").textContent = conf + "%";
+  $("#barFill").style.width = conf + "%";
+  $("#confNum").textContent = conf + "%";
+  $("#hybrid").textContent = (second && margin !== null && margin <= 0.06) ? "（ハイブリッド）" : "";
 }
 
 async function runScore() {
-  const a = qs("#typeA").value;
-  const b = qs("#typeB").value;
+  const a = $("#typeA").value, b = $("#typeB").value;
+  if (!state.apiBase) { setNote("API URL を設定してください。"); return; }
   if (!a || !b) { setNote("タイプA/Bを選択してください。"); return; }
   setNote("診断中…");
   try {
@@ -117,22 +140,19 @@ async function runScore() {
       body: JSON.stringify({ typeA: a, typeB: b })
     });
     const payload = await res.json();
-    if (!res.ok) {
-      setNote(`エラー: ${payload.detail || "unknown"}`);
-      return;
-    }
+    if (!res.ok) { setNote(`エラー: ${payload.detail || "unknown"}`); return; }
     setNote("");
     renderResult(payload);
-  } catch (e) {
-    setNote("通信に失敗しました。時間をおいて再実行してください。");
+  } catch {
+    setNote("通信エラーです。API URL や Render の稼働状況を確認してください。");
   }
 }
 
 function init() {
-  qs("#run").addEventListener("click", runScore);
-  loadTypes();
+  $("#apiBase").value = state.apiBase;
+  $("#saveApi").addEventListener("click", saveApi);
+  $("#run").addEventListener("click", runScore);
+  if (state.apiBase) loadTypes();
 }
-
-document.addEventListener("DOMContentLoaded", init);
 
 document.addEventListener("DOMContentLoaded", init);
