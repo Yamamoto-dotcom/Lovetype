@@ -83,11 +83,20 @@ function renderResult(payload) {
   $("#summaryTitle").textContent = `${macroTop} / ${micro}`;
   $("#summaryCatch").textContent = payload?.copy?.catch || "";
 
-  // ハイブリッド表示は「文字のみ」。Δや候補は出さない
+  // ハイブリッド傾向：ある時だけ文字を出し、無い時は要素自体を隠す
   const second = payload?.macro?.second;
   const margin = payload?.macro?.margin;
-  $("#summaryMeta").textContent =
-    (second && margin !== null && margin <= 0.06) ? "ハイブリッド傾向" : "";
+  const hasHybrid = !!(second && margin !== null && margin <= 0.06);
+  const metaEl = $("#summaryMeta");
+  if (metaEl) {
+    if (hasHybrid) {
+      metaEl.textContent = "ハイブリッド傾向";
+      metaEl.style.display = "block";
+    } else {
+      metaEl.textContent = "";
+      metaEl.style.display = "none";
+    }
+  }
 
   // レーダー
   ensureRadar(payload.scores || {共感:0,調和:0,依存:0,刺激:0,信頼:0});
@@ -98,13 +107,13 @@ function renderResult(payload) {
   $("#cardStrengths").textContent = strongs || "—";
   $("#cardCautions").textContent = cautions || "—";
 
-  // 確信度（ハイブリッドの括弧表示は廃止）
+  // 確信度（%バーのみ）
   let conf = Number(payload?.confidence || 0);
   conf = Math.max(0, Math.min(100, conf));
   $("#barFill").style.width = conf + "%";
   $("#confNum").textContent = conf + "%";
   const hybridSpan = $("#hybrid");
-  if (hybridSpan) hybridSpan.textContent = ""; // 何も表示しない
+  if (hybridSpan) hybridSpan.textContent = ""; // 使わないので空
 }
 
 async function runScore() {
