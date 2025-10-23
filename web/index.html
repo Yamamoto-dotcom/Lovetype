@@ -2,64 +2,97 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ラブタイプ相性診断（MVP）</title>
-  <meta name="description" content="2人のラブタイプを選ぶだけ。レーダーチャートと診断がすぐ出ます。" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ラブタイプ相性診断 – MVP</title>
+
+  <!-- フォント＆スタイル -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Chart.js v4（Radar用） -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
-  <header class="container">
-    <h1>ラブタイプ相性診断</h1>
-    <p class="sub">2人のタイプを選んで「診断する」を押してください。</p>
+  <!-- ヘッダー（ピンク） -->
+  <header class="hdr">
+    <div class="container">
+      <h1 class="title">ラブタイプ相性診断</h1>
+
+      <!-- 入力ピル -->
+      <div class="pills" role="group" aria-label="入力項目">
+        <select id="typeA" class="pill" aria-label="あなたのラブタイプ">
+          <option value="" disabled selected>あなたのラブタイプを選択</option>
+        </select>
+        <select id="typeB" class="pill" aria-label="お相手のラブタイプ">
+          <option value="" disabled selected>お相手のラブタイプを選択</option>
+        </select>
+        <button id="run" class="pill wide" aria-label="診断する">診断する</button>
+      </div>
+
+      <!-- 設定（API URL） -->
+      <details class="settings">
+        <summary>⚙️ API設定（RenderのURL）</summary>
+        <div class="settings-row">
+          <input id="apiBase" type="url" placeholder="https://xxx.onrender.com" />
+          <button id="saveApi" class="pill">保存</button>
+        </div>
+        <small class="hint">保存するとローカルに記憶します。</small>
+      </details>
+      <div id="note" class="note"></div>
+    </div>
   </header>
 
-  <main class="container">
-    <section class="card">
-      <h2>入力</h2>
-      <div class="row">
-        <label for="typeA">タイプA</label>
-        <select id="typeA"><option>読み込み中...</option></select>
+  <!-- 真ん中の帯 -->
+  <section class="band">
+    <div class="container band-grid">
+      <!-- 左：サマリー -->
+      <div class="card" id="summaryCard">
+        <div class="section-title">相性まとめ</div>
+        <h2 id="summaryTitle" class="summary-title">タイプを選択してください</h2>
+        <p id="summaryCatch" class="muted">上の入力を選び「診断する」を押すと結果が表示されます。</p>
+        <div id="summaryMeta" class="muted" style="margin-top:10px;"></div>
       </div>
-      <div class="row">
-        <label for="typeB">タイプB</label>
-        <select id="typeB"><option>読み込み中...</option></select>
-      </div>
-      <div class="row">
-        <button id="run">診断する</button>
-      </div>
-      <div id="inputNote" class="note"></div>
-    </section>
 
-    <section id="result" class="card hidden">
-      <h2>診断結果</h2>
-      <canvas id="radar" width="400" height="400"></canvas>
-
-      <div class="result-block">
-        <div class="macro">
-          <div><strong>ベース気質:</strong> <span id="macroTop">-</span>
-            <span id="macroHybrid" class="hybrid"></span>
-          </div>
-          <!-- ※「候補距離」は完全削除 -->
+      <!-- 右：レーダー -->
+      <div class="radar-wrap">
+        <div class="pentagon">
+          <canvas id="radarCanvas" width="420" height="420" aria-label="5指標レーダー"></canvas>
         </div>
-
-        <div class="micro">
-          <div><strong>タイプ:</strong> <span id="microType">-</span></div>
-          <div class="catch" id="catch"></div>
-          <div class="body" id="body"></div>
-        </div>
-
-        <div class="confidence">
-          <label>自信度</label>
-          <div class="bar"><div id="barFill" class="fill" style="width:0%"></div></div>
-          <span id="confNum">0%</span>
-        </div>
+        <div class="under-pill" id="badge">5 指標（共感／調和／依存／刺激／信頼）</div>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
 
-  <footer class="container foot">
-    <small>© 2025 Lovetype MVP</small>
+  <!-- 下段：本文・確信度 -->
+  <section class="bottom">
+    <div class="container bottom-grid">
+      <div class="card">
+        <div class="section-title">ふたりの強み</div>
+        <div id="cardStrengths" class="muted">診断本文の前半を表示します。</div>
+      </div>
+      <div class="card">
+        <div class="section-title">注意ポイント</div>
+        <div id="cardCautions" class="muted">診断本文の後半を表示します。</div>
+      </div>
+      <div class="card">
+        <div class="section-title">確信度</div>
+        <div class="bar"><div id="barFill" class="fill" style="width:0%"></div></div>
+        <div class="conf-row"><span id="confNum">0%</span><span id="hybrid"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="container">
+      <small>© 2025 Lovetype MVP</small>
+    </div>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>
   </footer>
 
   <script src="./script.js"></script>
