@@ -16,7 +16,6 @@ async function getTypes(){
   if(!res.ok) throw new Error(`/types 取得に失敗: ${res.status}`);
   return res.json();
 }
-
 async function postScore(a, b){
   const res = await fetch(`${api()}/score`,{
     method:"POST",
@@ -29,16 +28,11 @@ async function postScore(a, b){
 
 // ページごと初期化
 document.addEventListener("DOMContentLoaded", async () => {
-  const page = document.body.dataset.page;
-
   try{
-    if(page === "index"){
-      await initIndex();
-    }else if(page === "result"){
-      await initResult();
-    }else if(page === "detail"){
-      await initDetail();
-    }
+    const page = document.body?.dataset?.page || "";
+    if(page==="index")  await initIndex();
+    if(page==="result") await initResult();
+    if(page==="detail") await initDetail();
   }catch(e){
     console.error(e);
     const box = $("#errorBox");
@@ -50,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function initIndex(){
   const mine = $("#mine");
   const partner = $("#partner");
-  const btn = $("#goBtn");
+  const btn = $("#goBtn") || $("#diagnoseBtn"); // 両対応
 
   // タイプ一覧をAPIから
   const types = await getTypes();
@@ -74,7 +68,7 @@ async function initIndex(){
 // --- Result ---
 async function initResult(){
   // 画像（差し替え自由）
-  $("#kvImg").src = "./assets/char-angeldevil.png";
+  $("#kvImg").src = "./char-angeldevil.PNG";
 
   const { a, b } = parseQS();
   if(!a || !b) { location.href = "index.html"; return; }
@@ -83,6 +77,7 @@ async function initResult(){
 
   // 結果取得
   const data = await postScore(a, b);
+
   // タイトル
   const microType = ensureTypeSuffix(data?.micro?.type);
   $("#resultTitle").textContent = `${data?.macro?.top} / ${microType}`;
@@ -107,32 +102,24 @@ async function initResult(){
   // 本文（先頭数行だけ抜粋）
   const body = (data?.copy?.body || "").trim();
   const [feature, advice] = splitBody(body);
-  $("#excerpt").textContent = feature.slice(0, 120) + (feature.length>120 ? "..." : "");
+  $("#excerpt").textContent = (feature || "").split("\n").slice(0,2).join(" ");
 
-  // リンク：詳細へ
+  // 詳細ページへ
   $("#detailLink").href = `detail.html?${toQS({a,b})}`;
 }
 
 // --- Detail ---
 async function initDetail(){
-  // 画像（差し替え自由）
-  $("#kvImg").src = "./assets/char-girl.png";
-
   const { a, b } = parseQS();
   if(!a || !b) { location.href = "index.html"; return; }
+  $("#pair").textContent = `${a} × ${b}`;
+  $("#kvImg").src = "./char-girl.PNG";
 
   const data = await postScore(a, b);
   const microType = ensureTypeSuffix(data?.micro?.type);
-  $("#pair").textContent = `${a} × ${b}`;
-  $("#resultTitle").textContent = `${data?.macro?.top} / ${microType}`;
-
-  // ハイブリッド表示（任意）
-  const margin = Number(data?.macro?.margin ?? 1);
-  const second = data?.macro?.second || "";
-  if(second && margin <= 0.06){
-    $("#hybrid").classList.add("show");
-    $("#hybrid").textContent = `ハイブリッド傾向 / ${second}`;
-  }
+  $("#detailTitle").textContent = `${data?.macro?.top} / ${microType}`;
+  $("#macroTop").textContent = data?.macro?.top || "-";
+  $("#microType").textContent = microType;
 
   // 本文全量（特徴／アドバイスに分割）
   const body = (data?.copy?.body || "").trim();
@@ -150,18 +137,16 @@ function ensureTypeSuffix(name){
   if(!name) return "-";
   return /タイプ$/.test(name) ? name : `${name}タイプ`;
 }
-
 function splitBody(body){
-  const idx = body.indexOf("アドバイス：");
-  if(idx === -1) return [body, ""];
-  return [ body.slice(0, idx).trim(), body.slice(idx + "アドバイス：".length).trim() ];
+  if(!body) return ["-","-"];
+  const lines = body.split(/\r?\n/).map(s=>s.trim());
+  const pivot = Math.max(3, Math.floor(lines.length*0.45));
+  return [lines.slice(0,pivot).join("\n"), lines.slice(pivot).join("\n")];
 }
-
 function drawRadar(vals){
-  const ctx = $("#chart").getContext("2d");
-  if(window.__chart) window.__chart.destroy();
-  window.__chart = new Chart(ctx,{
-    type:"radar",
+  const ctx = document.getElementById('chart').getContext('2d');
+  new Chart(ctx, {
+    type:'radar',
     data:{
       labels:["共感","調和","依存","刺激","信頼"],
       datasets:[{
