@@ -1,152 +1,186 @@
-(function(){
-  const API_BASE = (typeof window.API_BASE !== "undefined" && window.API_BASE) ? window.API_BASE : null;
-
-  function $(sel){ return document.querySelector(sel); }
-  function setText(sel, txt){ const el = typeof sel === 'string' ? $(sel) : sel; if(el) el.textContent = txt ?? ""; }
-  function has(obj, k){ return obj && Object.prototype.hasOwnProperty.call(obj, k); }
-
-  async function fetchTypes(){
-    if(!API_BASE) throw new Error("API_BASE not set");
-    const r = await fetch(`${API_BASE}/types`, {cache:"no-store"});
-    if(!r.ok) throw new Error("/types error");
-    return await r.json(); // ["敏腕マネージャー", ...]
+// web/script.js
+// 共通ユーティリティ
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
+const api = () => {
+  if (!window.API_BASE || typeof window.API_BASE !== "string" || !/^https?:\/\//.test(window.API_BASE)) {
+    throw new Error("API URL が設定されていません（web/config.js を確認）");
   }
+  return window.API_BASE;
+};
+const parseQS = () => Object.fromEntries(new URLSearchParams(location.search).entries());
+const toQS = (obj) => new URLSearchParams(obj).toString();
 
-  async function fetchScore(typeA, typeB){
-    if(!API_BASE) throw new Error("API_BASE not set");
-    const headers = {"Content-Type":"application/json"};
-    // 1) 推奨: {typeA,typeB}
-    let r = await fetch(`${API_BASE}/score`, {method:"POST", headers, body:JSON.stringify({typeA, typeB})});
-    if(!r.ok){
-      // 2) 互換: {a,b}
-      r = await fetch(`${API_BASE}/score`, {method:"POST", headers, body:JSON.stringify({a:typeA, b:typeB})});
-    }
-    if(!r.ok){
-      // 3) 互換: GET クエリ
-      r = await fetch(`${API_BASE}/score?typeA=${encodeURIComponent(typeA)}&typeB=${encodeURIComponent(typeB)}`);
-    }
-    if(!r.ok){
-      const txt = await r.text();
-      throw new Error(`/score error: ${r.status} ${txt}`);
-    }
-    return await r.json();
-  }
+async function getTypes(){
+  const res = await fetch(`${api()}/types`);
+  if(!res.ok) throw new Error(`/types 取得に失敗: ${res.status}`);
+  return res.json();
+}
 
-  function storeResult(res){
-    sessionStorage.setItem("lv_result", JSON.stringify(res));
-  }
-  function loadResult(){
-    const s = sessionStorage.getItem("lv_result");
-    return s ? JSON.parse(s) : null;
-  }
-
-  function ensureMicroTypeName(name){
-    if(!name) return "";
-    return name.endsWith("タイプ") ? name : (name + "タイプ");
-  }
-
-  function pickFeatureAdvice(copy){
-    // 新仕様: {feature, advice} を優先。なければ {catch, body} を採用。
-    const feature = has(copy,"feature") ? copy.feature : (has(copy,"catch") ? copy.catch : "");
-    const advice  = has(copy,"advice")  ? copy.advice  : (has(copy,"body")  ? copy.body  : "");
-    return {feature, advice};
-  }
-
-  async function initIndex(){
-    if(!API_BASE){ alert("API URLが設定されていません。/web/config.js の window.API_BASE を確認してください。"); return; }
-    const mine = $('#mine'), partner = $('#partner'), btn = $('#diagnoseBtn');
-    try{
-      const types = await fetchTypes();
-      [mine, partner].forEach(sel=>{
-        sel.innerHTML = `<option value="" disabled selected>ラブタイプを選択</option>` + types.map(t=>`<option>${t}</option>`).join('');
-      });
-    }catch(e){
-      console.error(e);
-      alert("タイプ一覧の取得に失敗しました。APIのURLとRender稼働を確認してください。");
-      return;
-    }
-    btn.addEventListener('click', async ()=>{
-      const a = mine.value, b = partner.value;
-      if(!a || !b) return alert("ふたりのタイプを選んでください。");
-      try{
-        const res = await fetchScore(a,b);
-        storeResult(res);
-        location.href = "result.html";
-      }catch(e){
-        console.error(e);
-        alert("診断に失敗しました。/score のログを確認してください。");
-      }
-    });
-  }
-
-  function drawRadar(canvasId, scores){
-    // scores: {共感,調和,依存,刺激,信頼} 0-200
-    const labels = ["共感","調和","依存","刺激","信頼"];
-    const data = labels.map(k => scores[k] ?? 0);
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    return new Chart(ctx, {
-      type: 'radar',
-      data: {
-        labels,
-        datasets: [{
-          label: '合算スコア',
-          data,
-          fill: true
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: { r: { beginAtZero:true, min:0, max:200, ticks:{ stepSize:50 } } },
-        plugins: { legend: { display:false } }
-      }
-    });
-  }
-
-  function renderHybrid(macro){
-    if(!macro) return "";
-    const secName = macro.second || "";
-    const margin = (typeof macro.margin==="number") ? macro.margin : 1;
-    if(secName && margin <= 0.06){ return `ハイブリッド傾向 / ${secName}`; }
-    return "";
-  }
-
-  function initResult(){
-    const res = loadResult();
-    if(!res){ location.replace("index.html"); return; }
-
-    // タイトル・ハイブリッド
-    setText('#typeName', ensureMicroTypeName(res?.micro?.type || ""));
-    setText('#hybrid', renderHybrid(res?.macro));
-
-    // レーダー
-    drawRadar('radar', res.scores || {});
-
-    // 特徴・アドバイス
-    const {feature, advice} = pickFeatureAdvice(res.copy || {});
-    setText('#feature', feature || "—");
-    setText('#advice', advice || "—");
-
-    // 詳細へ
-    $('#goDetail').addEventListener('click', ()=> location.href = 'detail.html');
-  }
-
-  function initDetail(){
-    const res = loadResult();
-    if(!res){ location.replace("index.html"); return; }
-    setText('#titleDetail', ensureMicroTypeName(res?.micro?.type || ""));
-    const {feature, advice} = pickFeatureAdvice(res.copy || {});
-    setText('#featureBig', feature || "—");
-    setText('#adviceBig', advice || "—");
-  }
-
-  // ページ振り分け
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const page = document.body.getAttribute('data-page');
-    if(page === 'index'){ initIndex(); }
-    if(page === 'result'){ initResult(); }
-    if(page === 'detail'){ initDetail(); }
+async function postScore(a, b){
+  const res = await fetch(`${api()}/score`,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ a, b })
   });
+  if(!res.ok) throw new Error(`/score 失敗: ${res.status}`);
+  return res.json();
+}
 
-  // debug
-  window.__lv = { fetchTypes, fetchScore, loadResult };
-})();
+// ページごと初期化
+document.addEventListener("DOMContentLoaded", async () => {
+  const page = document.body.dataset.page;
+
+  try{
+    if(page === "index"){
+      await initIndex();
+    }else if(page === "result"){
+      await initResult();
+    }else if(page === "detail"){
+      await initDetail();
+    }
+  }catch(e){
+    console.error(e);
+    const box = $("#errorBox");
+    if(box){ box.textContent = String(e.message || e); box.style.display="block"; }
+  }
+});
+
+// --- Index ---
+async function initIndex(){
+  const mine = $("#mine");
+  const partner = $("#partner");
+  const btn = $("#goBtn");
+
+  // タイプ一覧をAPIから
+  const types = await getTypes();
+  for(const s of [mine, partner]){
+    s.innerHTML = `<option value="" disabled selected>ラブタイプを選択</option>` +
+      types.map(t=>`<option>${t}</option>`).join("");
+  }
+
+  // URLプリセット（任意）
+  const qs = parseQS();
+  if(qs.a) mine.value = qs.a;
+  if(qs.b) partner.value = qs.b;
+
+  btn.addEventListener("click", ()=>{
+    const a = mine.value, b = partner.value;
+    if(!a || !b){ alert("ふたりのラブタイプを選んでください"); return; }
+    location.href = `result.html?${toQS({a,b})}`;
+  });
+}
+
+// --- Result ---
+async function initResult(){
+  // 画像（差し替え自由）
+  $("#kvImg").src = "./assets/char-angeldevil.png";
+
+  const { a, b } = parseQS();
+  if(!a || !b) { location.href = "index.html"; return; }
+
+  $("#pair").textContent = `${a} × ${b}`;
+
+  // 結果取得
+  const data = await postScore(a, b);
+  // タイトル
+  const microType = ensureTypeSuffix(data?.micro?.type);
+  $("#resultTitle").textContent = `${data?.macro?.top} / ${microType}`;
+
+  // ハイブリッド（margin<=0.06 のときのみ表示）
+  const margin = Number(data?.macro?.margin ?? 1);
+  const second = data?.macro?.second || "";
+  if(second && margin <= 0.06){
+    $("#hybrid").classList.add("show");
+    $("#hybrid").textContent = `ハイブリッド傾向 / ${second}`;
+  }
+
+  // チャート
+  const scores = data?.scores || {};
+  drawRadar([scores["共感"], scores["調和"], scores["依存"], scores["刺激"], scores["信頼"]]);
+
+  // サマリ
+  $("#confidence").textContent = `${data?.confidence ?? 0}%`;
+  $("#macroTop").textContent = data?.macro?.top || "-";
+  $("#microType").textContent = microType;
+
+  // 本文（先頭数行だけ抜粋）
+  const body = (data?.copy?.body || "").trim();
+  const [feature, advice] = splitBody(body);
+  $("#excerpt").textContent = feature.slice(0, 120) + (feature.length>120 ? "..." : "");
+
+  // リンク：詳細へ
+  $("#detailLink").href = `detail.html?${toQS({a,b})}`;
+}
+
+// --- Detail ---
+async function initDetail(){
+  // 画像（差し替え自由）
+  $("#kvImg").src = "./assets/char-girl.png";
+
+  const { a, b } = parseQS();
+  if(!a || !b) { location.href = "index.html"; return; }
+
+  const data = await postScore(a, b);
+  const microType = ensureTypeSuffix(data?.micro?.type);
+  $("#pair").textContent = `${a} × ${b}`;
+  $("#resultTitle").textContent = `${data?.macro?.top} / ${microType}`;
+
+  // ハイブリッド表示（任意）
+  const margin = Number(data?.macro?.margin ?? 1);
+  const second = data?.macro?.second || "";
+  if(second && margin <= 0.06){
+    $("#hybrid").classList.add("show");
+    $("#hybrid").textContent = `ハイブリッド傾向 / ${second}`;
+  }
+
+  // 本文全量（特徴／アドバイスに分割）
+  const body = (data?.copy?.body || "").trim();
+  const [feature, advice] = splitBody(body);
+  $("#feature").textContent = feature;
+  $("#advice").textContent = advice;
+
+  // レーダー（再掲）
+  const scores = data?.scores || {};
+  drawRadar([scores["共感"], scores["調和"], scores["依存"], scores["刺激"], scores["信頼"]]);
+}
+
+// ユーティリティ
+function ensureTypeSuffix(name){
+  if(!name) return "-";
+  return /タイプ$/.test(name) ? name : `${name}タイプ`;
+}
+
+function splitBody(body){
+  const idx = body.indexOf("アドバイス：");
+  if(idx === -1) return [body, ""];
+  return [ body.slice(0, idx).trim(), body.slice(idx + "アドバイス：".length).trim() ];
+}
+
+function drawRadar(vals){
+  const ctx = $("#chart").getContext("2d");
+  if(window.__chart) window.__chart.destroy();
+  window.__chart = new Chart(ctx,{
+    type:"radar",
+    data:{
+      labels:["共感","調和","依存","刺激","信頼"],
+      datasets:[{
+        label:"合算スコア（0-200）",
+        data: vals.map(v=>Number(v||0)),
+        fill:true
+      }]
+    },
+    options:{
+      responsive:true,
+      scales:{
+        r:{
+          suggestedMin:0,suggestedMax:200,beginAtZero:true,
+          angleLines:{ color:"rgba(0,0,0,.15)" },
+          grid:{ color:"rgba(0,0,0,.12)" },
+          pointLabels:{ font:{ size:12 } }
+        }
+      },
+      plugins:{ legend:{ display:false } }
+    }
+  });
+}
