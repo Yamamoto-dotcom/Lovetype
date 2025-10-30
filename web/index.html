@@ -7,25 +7,48 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="app.css">
-  <script src="config.js"></script>
+  <!-- app.css ではなく style.css を読み込む -->
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body data-page="index">
-  <div class="container">
-    <h1 class="header">ラブタイプ相性診断</h1>
-    <div class="panel card center" style="padding:24px">
-      <div class="pills" role="group" aria-label="入力">
-        <select id="mine" class="pill" aria-label="あなたのラブタイプ">
-          <option value="" disabled selected>読み込み中…</option>
-        </select>
-        <select id="partner" class="pill" aria-label="お相手のラブタイプ">
-          <option value="" disabled selected>読み込み中…</option>
-        </select>
-        <button id="diagnoseBtn" class="pill wide" aria-label="診断する">診断する</button>
+  <header class="hero">
+    <div class="container hero-grid">
+      <div>
+        <h1 class="title">ラブタイプ相性診断</h1>
+        <p class="lead">ふたりのラブタイプを選んでください</p>
+        <div class="card">
+          <div class="pills" role="group" aria-label="入力">
+            <select id="mine" class="pill" aria-label="あなたのラブタイプ">
+              <option value="" disabled selected>読み込み中…</option>
+            </select>
+            <select id="partner" class="pill" aria-label="お相手のラブタイプ">
+              <option value="" disabled selected>読み込み中…</option>
+            </select>
+            <!-- diagnoseBtn ではなく goBtn を使う（script.jsが期待） -->
+            <button id="goBtn" class="pill wide" aria-label="診断する">診断する</button>
+          </div>
+        </div>
+        <div class="kv" style="margin-top:12px">
+          <div class="slot ad" aria-label="広告枠（空）"></div>
+          <div class="slot" aria-label="シェア枠（空）"></div>
+        </div>
+      </div>
+      <div>
+        <!-- 任意のKV。あとで差し替え可 -->
+        <img class="char" src="./assets/char-dog.png" alt="キービジュアル">
       </div>
     </div>
-    <p class="footer">© Lovetype</p>
+  </header>
+
+  <div class="container">
+    <div id="errorBox" class="card" style="display:none;color:#b00020"></div>
   </div>
-  <script src="app.js"></script>
+  <footer class="footer"><div class="container meta">© ラブタイプ相性診断</div></footer>
+
+  <!-- 順序：config.js → script.js（script.jsがAPI_BASEを参照） -->
+  <script src="./config.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>
 </body>
 </html>
