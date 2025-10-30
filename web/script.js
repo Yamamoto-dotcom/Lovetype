@@ -1,145 +1,152 @@
-// 固定API（config.js で window.API_BASE を定義）
-const API = (window.API_BASE || "").replace(/\/+$/, "");
+(function(){
+  const API_BASE = (typeof window.API_BASE !== "undefined" && window.API_BASE) ? window.API_BASE : null;
 
-const $ = (s) => document.querySelector(s);
-function setNote(msg) { const el = $("#note"); if (el) el.textContent = msg || ""; }
+  function $(sel){ return document.querySelector(sel); }
+  function setText(sel, txt){ const el = typeof sel === 'string' ? $(sel) : sel; if(el) el.textContent = txt ?? ""; }
+  function has(obj, k){ return obj && Object.prototype.hasOwnProperty.call(obj, k); }
 
-const state = { chart: null, types: [] };
+  async function fetchTypes(){
+    if(!API_BASE) throw new Error("API_BASE not set");
+    const r = await fetch(`${API_BASE}/types`, {cache:"no-store"});
+    if(!r.ok) throw new Error("/types error");
+    return await r.json(); // ["敏腕マネージャー", ...]
+  }
 
-async function loadTypes() {
-  if (!API) { setNote("APIのURLが設定されていません。/web/config.js の window.API_BASE を設定してください。"); return; }
-  const selA = $("#typeA"), selB = $("#typeB");
-  selA.innerHTML = `<option value="" disabled selected>読み込み中...</option>`;
-  selB.innerHTML = selA.innerHTML;
-  try {
-    const res = await fetch(`${API}/types`);
-    const arr = await res.json();
-    if (!Array.isArray(arr) || arr.length === 0) {
-      setNote("タイプが読み込めません。APIのデータ配置やRender稼働を確認してください。");
-      selA.innerHTML = `<option value="" disabled selected>（読み込み不可）</option>`;
-      selB.innerHTML = selA.innerHTML;
+  async function fetchScore(typeA, typeB){
+    if(!API_BASE) throw new Error("API_BASE not set");
+    const headers = {"Content-Type":"application/json"};
+    // 1) 推奨: {typeA,typeB}
+    let r = await fetch(`${API_BASE}/score`, {method:"POST", headers, body:JSON.stringify({typeA, typeB})});
+    if(!r.ok){
+      // 2) 互換: {a,b}
+      r = await fetch(`${API_BASE}/score`, {method:"POST", headers, body:JSON.stringify({a:typeA, b:typeB})});
+    }
+    if(!r.ok){
+      // 3) 互換: GET クエリ
+      r = await fetch(`${API_BASE}/score?typeA=${encodeURIComponent(typeA)}&typeB=${encodeURIComponent(typeB)}`);
+    }
+    if(!r.ok){
+      const txt = await r.text();
+      throw new Error(`/score error: ${r.status} ${txt}`);
+    }
+    return await r.json();
+  }
+
+  function storeResult(res){
+    sessionStorage.setItem("lv_result", JSON.stringify(res));
+  }
+  function loadResult(){
+    const s = sessionStorage.getItem("lv_result");
+    return s ? JSON.parse(s) : null;
+  }
+
+  function ensureMicroTypeName(name){
+    if(!name) return "";
+    return name.endsWith("タイプ") ? name : (name + "タイプ");
+  }
+
+  function pickFeatureAdvice(copy){
+    // 新仕様: {feature, advice} を優先。なければ {catch, body} を採用。
+    const feature = has(copy,"feature") ? copy.feature : (has(copy,"catch") ? copy.catch : "");
+    const advice  = has(copy,"advice")  ? copy.advice  : (has(copy,"body")  ? copy.body  : "");
+    return {feature, advice};
+  }
+
+  async function initIndex(){
+    if(!API_BASE){ alert("API URLが設定されていません。/web/config.js の window.API_BASE を確認してください。"); return; }
+    const mine = $('#mine'), partner = $('#partner'), btn = $('#diagnoseBtn');
+    try{
+      const types = await fetchTypes();
+      [mine, partner].forEach(sel=>{
+        sel.innerHTML = `<option value="" disabled selected>ラブタイプを選択</option>` + types.map(t=>`<option>${t}</option>`).join('');
+      });
+    }catch(e){
+      console.error(e);
+      alert("タイプ一覧の取得に失敗しました。APIのURLとRender稼働を確認してください。");
       return;
     }
-    state.types = arr;
-    const optsA = [`<option value="" disabled selected>あなたのラブタイプを選択</option>`]
-      .concat(arr.map(t => `<option value="${t}">${t}</option>`)).join("");
-    const optsB = [`<option value="" disabled selected>お相手のラブタイプを選択</option>`]
-      .concat(arr.map(t => `<option value="${t}">${t}</option>`)).join("");
-    selA.innerHTML = optsA; selB.innerHTML = optsB;
-    setNote("");
-  } catch (e) {
-    setNote("APIに接続できません。RenderのURL/CORS/稼働状況を確認してください。");
-  }
-}
-
-function ensureRadar(scores) {
-  const ctx = $("#radarCanvas");
-  const data = {
-    labels: ["共感","調和","依存","刺激","信頼"],
-    datasets: [{
-      label: "合算スコア",
-      data: [scores["共感"], scores["調和"], scores["依存"], scores["刺激"], scores["信頼"]],
-      borderWidth: 2,
-      fill: true,
-      borderColor: "rgba(255,106,165,0.9)",
-      backgroundColor: "rgba(255,106,165,0.25)",
-      pointBackgroundColor: "rgba(255,106,165,1)"
-    }]
-  };
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      r: {
-        suggestedMin: 0, suggestedMax: 200,
-        grid: { color: "rgba(0,0,0,.14)" },
-        angleLines: { color: "rgba(0,0,0,.18)" },
-        pointLabels: { color: "rgba(0,0,0,.55)", font: { size: 12 } },
-        ticks: { backdropColor: "transparent", showLabelBackdrop: false, color: "rgba(0,0,0,.55)" }
+    btn.addEventListener('click', async ()=>{
+      const a = mine.value, b = partner.value;
+      if(!a || !b) return alert("ふたりのタイプを選んでください。");
+      try{
+        const res = await fetchScore(a,b);
+        storeResult(res);
+        location.href = "result.html";
+      }catch(e){
+        console.error(e);
+        alert("診断に失敗しました。/score のログを確認してください。");
       }
-    },
-    plugins: { legend: { display: false } }
-  };
-  if (state.chart) { state.chart.data = data; state.chart.update(); }
-  else { state.chart = new Chart(ctx, { type: "radar", data, options }); }
-}
-
-function splitBody(text) {
-  if (!text) return ["", ""];
-  const dividers = ["\n—\n", "\n---\n", "\n◇\n", "\n■注意", "注意：", "【注意】"];
-  for (const d of dividers) {
-    const idx = text.indexOf(d);
-    if (idx > 0) return [text.slice(0, idx).trim(), text.slice(idx).replace(d, "").trim()];
-  }
-  if (text.length <= 140) return [text, ""];
-  const mid = Math.floor(text.length / 2);
-  return [text.slice(0, mid).trim(), text.slice(mid).trim()];
-}
-
-function renderResult(payload) {
-  // タイトル＆キャッチ
-  const macroTop = payload?.macro?.top || "-";
-  const micro = payload?.micro?.type || "-";
-  $("#summaryTitle").textContent = `${macroTop} / ${micro}`;
-  $("#summaryCatch").textContent = payload?.copy?.catch || "";
-
-  // ハイブリッド傾向：ある時だけ文字を出し、無い時は要素自体を隠す
-  const second = payload?.macro?.second;
-  const margin = payload?.macro?.margin;
-  const hasHybrid = !!(second && margin !== null && margin <= 0.06);
-  const metaEl = $("#summaryMeta");
-  if (metaEl) {
-    if (hasHybrid) {
-      metaEl.textContent = "ハイブリッド傾向";
-      metaEl.style.display = "block";
-    } else {
-      metaEl.textContent = "";
-      metaEl.style.display = "none";
-    }
-  }
-
-  // レーダー
-  ensureRadar(payload.scores || {共感:0,調和:0,依存:0,刺激:0,信頼:0});
-
-  // 本文 → 強み/注意
-  const body = payload?.copy?.body || "";
-  const [strongs, cautions] = splitBody(body);
-  $("#cardStrengths").textContent = strongs || "—";
-  $("#cardCautions").textContent = cautions || "—";
-
-  // 確信度（%バーのみ）
-  let conf = Number(payload?.confidence || 0);
-  conf = Math.max(0, Math.min(100, conf));
-  $("#barFill").style.width = conf + "%";
-  $("#confNum").textContent = conf + "%";
-  const hybridSpan = $("#hybrid");
-  if (hybridSpan) hybridSpan.textContent = ""; // 使わないので空
-}
-
-async function runScore() {
-  const a = $("#typeA").value, b = $("#typeB").value;
-  if (!API) { setNote("APIのURLが設定されていません。/web/config.js を確認してください。"); return; }
-  if (!a || !b) { setNote("タイプA/Bを選択してください。"); return; }
-  setNote("診断中…");
-  try {
-    const res = await fetch(`${API}/score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ typeA: a, typeB: b })
     });
-    const payload = await res.json();
-    if (!res.ok) { setNote(`エラー: ${payload.detail || "unknown"}`); return; }
-    setNote(""); renderResult(payload);
-  } catch {
-    setNote("通信エラーです。Renderの稼働やCORSを確認してください。");
   }
-}
 
-function init() {
-  if (!API) { setNote("APIのURLが設定されていません。/web/config.js の window.API_BASE を設定してください。"); return; }
-  $("#run").addEventListener("click", runScore);
-  loadTypes();
-}
+  function drawRadar(canvasId, scores){
+    // scores: {共感,調和,依存,刺激,信頼} 0-200
+    const labels = ["共感","調和","依存","刺激","信頼"];
+    const data = labels.map(k => scores[k] ?? 0);
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels,
+        datasets: [{
+          label: '合算スコア',
+          data,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { r: { beginAtZero:true, min:0, max:200, ticks:{ stepSize:50 } } },
+        plugins: { legend: { display:false } }
+      }
+    });
+  }
 
-document.addEventListener("DOMContentLoaded", init);
-document.addEventListener("DOMContentLoaded", init);
+  function renderHybrid(macro){
+    if(!macro) return "";
+    const secName = macro.second || "";
+    const margin = (typeof macro.margin==="number") ? macro.margin : 1;
+    if(secName && margin <= 0.06){ return `ハイブリッド傾向 / ${secName}`; }
+    return "";
+  }
+
+  function initResult(){
+    const res = loadResult();
+    if(!res){ location.replace("index.html"); return; }
+
+    // タイトル・ハイブリッド
+    setText('#typeName', ensureMicroTypeName(res?.micro?.type || ""));
+    setText('#hybrid', renderHybrid(res?.macro));
+
+    // レーダー
+    drawRadar('radar', res.scores || {});
+
+    // 特徴・アドバイス
+    const {feature, advice} = pickFeatureAdvice(res.copy || {});
+    setText('#feature', feature || "—");
+    setText('#advice', advice || "—");
+
+    // 詳細へ
+    $('#goDetail').addEventListener('click', ()=> location.href = 'detail.html');
+  }
+
+  function initDetail(){
+    const res = loadResult();
+    if(!res){ location.replace("index.html"); return; }
+    setText('#titleDetail', ensureMicroTypeName(res?.micro?.type || ""));
+    const {feature, advice} = pickFeatureAdvice(res.copy || {});
+    setText('#featureBig', feature || "—");
+    setText('#adviceBig', advice || "—");
+  }
+
+  // ページ振り分け
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const page = document.body.getAttribute('data-page');
+    if(page === 'index'){ initIndex(); }
+    if(page === 'result'){ initResult(); }
+    if(page === 'detail'){ initDetail(); }
+  });
+
+  // debug
+  window.__lv = { fetchTypes, fetchScore, loadResult };
+})();
