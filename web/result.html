@@ -58,10 +58,9 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
 @media (max-width:480px){
   :root{
     --padX: 7%;
-    --boy-col: clamp(100px, 24%, 140px);      /* 少し縮小 */
+    --boy-col: clamp(100px, 24%, 140px);
   }
 
-  /* ボタンは最上部右、タイトルはボタン避けの幅で中央寄せ（重なりゼロ） */
   .link{
     top: calc(1.2% + env(safe-area-inset-top, 0px));
     transform: scale(.86);
@@ -69,27 +68,27 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
   }
   .arc{
     top: calc(10.2% + env(safe-area-inset-top, 0px)*0.1);
-    width: calc(100% - 40%);  /* 右40%を常時確保 */
+    width: calc(100% - 40%);
     margin-left: 0; margin-right: auto;
     letter-spacing: .28em;
   }
 
-  /* ★レーダーを“やや小さめ”に＆内部余白を詰めて見やすく */
-  .radar-wrap{ top: 14%; max-height: 44%; }   /* ← 全体サイズを小さく */
-  .penta-bg{ inset: 3.4%; transform: scale(1.00); } /* ← ベージュの五角形も少し小さく */
-  .radar-box{ inset: 9%; }                    /* ← グラフ自体は大きめに（余白を減らす） */
+  /* ▼ 五角形を“少しだけ”小さく */
+  .radar-wrap{ top: 14%; max-height: 42%; }   /* 44% → 42% */
+  .penta-bg{ inset: 3.6%; transform: scale(0.98); } /* 1.00 → 0.98 */
+  .radar-box{ inset: 10%; }                    /* 見やすさキープ */
 
-  /* ★ピルを“上に”上げて男の子の頭と離す（かつレーダーとは十分な距離） */
-  .bar{ bottom: 38%; height: 54px; }          /* 34% → 38% にアップ */
+  /* ▼ ピルを“下へ”＝レーダーと確実に離す */
+  .bar{ bottom: 33%; height: 54px; }           /* 38% → 33% */
 
-  /* 吹き出し/男の子：下げて余白を確保 */
+  /* 下段は前回と同じ（微調整のみ） */
   .bubble{
     left: calc(var(--padX) + var(--boy-col) + 1.6%);
     right: var(--padX);
-    bottom: 9%;                               /* 少し下げる */
+    bottom: 9%;
     padding: 12px 14px;
   }
-  .boy{ bottom: 5%; }                          /* 男の子もわずかに下げる */
+  .boy{ bottom: 5%; }
 }
 </style>
 </head>
