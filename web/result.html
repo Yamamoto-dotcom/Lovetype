@@ -24,7 +24,7 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
 /* タイトル/詳細 */
 .arc{position:absolute;top:7%;left:0;right:0;text-align:center;font-weight:900;color:#fff;
   text-shadow:0 3px 0 #ff8fbf;letter-spacing:.4em;z-index:2}
-.link{position:absolute;right:calc(var(--padX));top:6%;
+.link{position:absolute;right:var(--padX);top:6%;
   background:#fff;border-radius:999px;padding:8px 12px;font-weight:900;
   text-decoration:none;color:#333;border:3px solid #000;z-index:3}
 
@@ -54,39 +54,42 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
 .boy{position:absolute;left:calc(var(--padX) - 2%);bottom:7%;width:var(--boy-col);
   pointer-events:none;z-index:1}
 
-/* ===== スマホ最適化（重なり完全回避＋余白拡張） ===== */
+/* ===== スマホ最適化（五角形を小さめ／ピルは上へ／男の子と離す） ===== */
 @media (max-width:480px){
-  :root{ --padX: 7%; }
-  /* ボタンを最上部右に、タイトルは“ボタンの当たり”を避けて左寄りの幅で中央揃え */
+  :root{
+    --padX: 7%;
+    --boy-col: clamp(100px, 24%, 140px);      /* 少し縮小 */
+  }
+
+  /* ボタンは最上部右、タイトルはボタン避けの幅で中央寄せ（重なりゼロ） */
   .link{
-    top: calc(2.2% + env(safe-area-inset-top, 0px));
-    transform: scale(.88);
+    top: calc(1.2% + env(safe-area-inset-top, 0px));
+    transform: scale(.86);
     transform-origin: 100% 0;
   }
   .arc{
-    top: calc(9.4% + env(safe-area-inset-top, 0px)*0.1);
-    /* 右側 38% を空けた幅で中央揃え → ボタンと物理的に重ならない */
-    width: calc(100% - 38%);
+    top: calc(10.2% + env(safe-area-inset-top, 0px)*0.1);
+    width: calc(100% - 40%);  /* 右40%を常時確保 */
     margin-left: 0; margin-right: auto;
     letter-spacing: .28em;
   }
 
-  /* レーダーを大きくしつつ、ピルとの距離を十分確保 */
-  .radar-wrap{ top: 14%; max-height: 54%; }
-  .penta-bg{ inset: 2.5%; transform: scale(1.08); }
-  .radar-box{ inset: 10%; }
+  /* ★レーダーを“やや小さめ”に＆内部余白を詰めて見やすく */
+  .radar-wrap{ top: 14%; max-height: 44%; }   /* ← 全体サイズを小さく */
+  .penta-bg{ inset: 3.4%; transform: scale(1.00); } /* ← ベージュの五角形も少し小さく */
+  .radar-box{ inset: 9%; }                    /* ← グラフ自体は大きめに（余白を減らす） */
 
-  /* 距離の肝：ピルを下げる（=合体防止） */
-  .bar{ bottom: 28%; height: 52px; }
+  /* ★ピルを“上に”上げて男の子の頭と離す（かつレーダーとは十分な距離） */
+  .bar{ bottom: 38%; height: 54px; }          /* 34% → 38% にアップ */
 
-  /* 吹き出し/男の子 は微調整 */
+  /* 吹き出し/男の子：下げて余白を確保 */
   .bubble{
     left: calc(var(--padX) + var(--boy-col) + 1.6%);
     right: var(--padX);
-    bottom: 10%;
+    bottom: 9%;                               /* 少し下げる */
     padding: 12px 14px;
   }
-  .boy{ bottom: 6.5%; }
+  .boy{ bottom: 5%; }                          /* 男の子もわずかに下げる */
 }
 </style>
 </head>
@@ -124,7 +127,7 @@ async function fetchScore(a,b){
   }
   return j;
 }
-/* 0〜100/0〜1 → 0〜1（表示用のみ） */
+/* 0〜100/0〜1 → 0〜1（表示用） */
 function norm(x){ let v=Number(x); if(!isFinite(v)) return 0; if(v>1) v/=100; if(v<0) v=0; if(v>1) v=1; return v; }
 function scoresToArray(p){
   const s=p.scores||{}; const get=(...ks)=>{for(const k of ks){if(s[k]!==undefined&&s[k]!==null&&s[k]!=='')return s[k]}return 0};
@@ -155,6 +158,4 @@ function scoresToArray(p){
 })();
 </script>
 </body>
-</html>
-</html>
 </html>
