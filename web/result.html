@@ -10,14 +10,13 @@
 :root{
   --p1:#ffc5dd; --p2:#ffb9d4; --cream:#fff7ee; --ink:#111;
   --padX: 8%;
-  /* 男の子の幅（端末に応じて自動調整） */
-  --boy-col: clamp(110px, 26%, 160px);
+  --boy-col: clamp(110px, 26%, 160px); /* 男の子の幅（可変） */
 }
 *{box-sizing:border-box} html,body{height:100%}
 body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-.wrap{width:min(520px,94vw);margin:0 auto;padding:20px 0 32px}
+.wrap{width:min(520px,94vw);margin:0 auto;padding:20px 0 36px}
 
-/* フレーム */
+/* 画面フレーム */
 .screen{position:relative;width:100%;aspect-ratio:9/16;border-radius:28px;overflow:hidden;
   box-shadow:0 8px 24px rgba(0,0,0,.08);background:linear-gradient(180deg,var(--p1),var(--p2))}
 .panel{position:absolute;inset:0;border-radius:42px;margin:5% 4%;background:linear-gradient(180deg,var(--p2),var(--p1))}
@@ -26,7 +25,7 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
 .arc{position:absolute;top:7%;left:0;right:0;text-align:center;font-weight:900;color:#fff;text-shadow:0 3px 0 #ff8fbf;letter-spacing:.4em;z-index:2}
 .link{position:absolute;right:calc(var(--padX) + 2%);top:6%;background:#fff;border-radius:999px;padding:8px 12px;font-weight:900;text-decoration:none;color:#333;border:3px solid #000;z-index:3}
 
-/* レーダー：正方形箱にフィット */
+/* レーダー：正方形箱にフィット（スマホでは大きめ） */
 .radar-wrap{position:absolute;left:var(--padX);right:var(--padX);top:18%;aspect-ratio:1/1;max-height:40%;margin:0 auto}
 .penta-bg{position:absolute;inset:3%;background:var(--cream);
   clip-path:polygon(50% 0%,100% 38%,80% 100%,20% 100%,0% 38%);
@@ -34,26 +33,40 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
 .radar-box{position:absolute;inset:14%;z-index:2}
 .radar-box canvas{width:100%;height:100%;display:block}
 
-/* ピル＆要約 */
-.bar{position:absolute;left:var(--padX);right:var(--padX);bottom:32%;height:48px;background:var(--cream);border-radius:999px;display:grid;place-items:center;font-weight:900;z-index:2}
+/* ピル＆要約（余白を少し広め） */
+.bar{position:absolute;left:var(--padX);right:var(--padX);bottom:32%;height:50px;background:var(--cream);border-radius:999px;display:grid;place-items:center;font-weight:900;z-index:2}
 
-/* ★吹き出しは「男の子の右端＋余白」から開始＝重なり0 */
+/* 吹き出しは“男の子の右端＋余白”から配置＝重なり0 */
 .bubble{
   position:absolute;
   left:  calc(var(--padX) + var(--boy-col) + 2%);
   right: var(--padX);
-  bottom: 11%;
+  bottom: 12%;
   min-height:16%;
   background:#fff;border:6px solid var(--ink);border-radius:22px;
-  display:flex;align-items:center;justify-content:center;padding:12px 14px;
+  display:flex;align-items:center;justify-content:center;padding:14px 16px;
   text-align:center;font-weight:700;z-index:2;width:auto;
 }
 
-/* 男の子は可変幅 */
-.boy{position:absolute;left:calc(var(--padX) - 2%);bottom:6%;width:var(--boy-col);pointer-events:none;z-index:1}
+/* 男の子 */
+.boy{position:absolute;left:calc(var(--padX) - 2%);bottom:7%;width:var(--boy-col);pointer-events:none;z-index:1}
 
-@media (max-width:420px){
-  .bubble{ bottom:12%; left:calc(var(--padX) + var(--boy-col) + 1.5%); }
+/* ===== スマホ最適化 ===== */
+@media (max-width: 480px){
+  :root{ --padX: 7%; }                 /* 端の余白を少しだけ詰めて中身を大きく */
+  .arc{ top:6.2%; letter-spacing:.35em; }
+  .link{ top:5.4%; }
+  .radar-wrap{ top:12%; max-height:56%; }      /* ← レーダーを大きく */
+  .penta-bg{ inset:2.5%; transform:scale(1.08); }
+  .radar-box{ inset:10%; }                      /* ← さらに広く描画 */
+  .bar{ bottom:35%; height:52px; }              /* ← レーダー拡大に合わせて下げる */
+  .bubble{
+    left:calc(var(--padX) + var(--boy-col) + 1.5%);
+    right:var(--padX);
+    bottom: 10%;                                /* ← 余白を確保して“ギチギチ”解消 */
+    padding:12px 14px;
+  }
+  .boy{ bottom:6.5%; }
 }
 </style>
 </head>
@@ -92,10 +105,10 @@ async function fetchScore(a,b){
   return j;
 }
 
-/* 0〜100/0〜1 どちらでも受け取り、0〜1にクランプ */
+/* 0〜100/0〜1 を 0〜1 に正規化（表示用）。値自体は変えない */
 function norm(x){
   let v = Number(x); if(!isFinite(v)) return 0;
-  if(v > 1) v = v/100;   // 60 → 0.6
+  if(v > 1) v = v/100;   /* 60 → 0.6 */
   if(v < 0) v = 0;
   if(v > 1) v = 1;
   return v;
@@ -132,7 +145,7 @@ function scoresToArray(payload){
       },
       options:{
         responsive:true, maintainAspectRatio:false,
-        layout:{ padding:24 },
+        layout:{ padding:20 }, /* モバイルでも余白を取りつつ大きめに */
         plugins:{ legend:{ display:false } },
         elements:{ line:{ tension:0 } },
         scales:{ r:{
@@ -140,7 +153,7 @@ function scoresToArray(payload){
           ticks:{ display:false },
           grid:{ circular:true, color:'rgba(0,0,0,0.06)' },
           angleLines:{ color:'rgba(0,0,0,0.06)' },
-          pointLabels:{ color:'#6b5a68', font:{ size:12 }, padding:12 }
+          pointLabels:{ color:'#6b5a68', font:{ size:12 }, padding:10 }
         }}
       }
     });
