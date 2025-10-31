@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>LOVE TYPE｜診断結果</title>
-<script src="/web/config.js"></script>
+<script src="./config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 :root{ --p1:#ffc5dd; --p2:#ffb9d4; --cream:#fff7ee; --ink:#111 }
@@ -31,7 +31,7 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
     <div class="penta"><canvas id="radar" class="radar"></canvas></div>
     <div id="typeBar" class="bar">相性タイプ：—</div>
     <div id="summary" class="bubble">—</div>
-    <img class="boy" src="/web/img/char-boy.PNG" alt="キャラクター">
+    <img class="boy" src="./img/char-boy.PNG" alt="キャラクター">
 
     <a id="toDetail" class="link" href="#">詳細を見る →</a>
   </section>
@@ -75,5 +75,7 @@ function scoresToArray(p){
   }catch(e){ alert('通信エラー：結果を取得できませんでした'); }
 })();
 </script>
+</body>
+</html>
 </body>
 </html>
