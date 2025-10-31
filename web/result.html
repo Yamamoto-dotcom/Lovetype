@@ -4,92 +4,75 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>LOVE TYPE｜診断結果</title>
-<script>window.API_BASE = window.API_BASE || 'http://localhost:8000';</script>
+<script src="/web/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{ --panel1:#ffc5dd; --panel2:#ffb9d4; --cream:#fff7ee; --ink:#111; }
+:root{ --p1:#ffc5dd; --p2:#ffb9d4; --cream:#fff7ee; --ink:#111 }
 *{box-sizing:border-box} html,body{height:100%}
-body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
-.wrap{width:min(520px,94vw);margin:0 auto;padding:20px 0 32px;}
-.screen{position:relative; width:100%; aspect-ratio:9/16; border-radius:28px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.08);
-  background:linear-gradient(180deg,var(--panel1),var(--panel2));}
-.panel{position:absolute; inset:0; border-radius:42px; margin:5% 4%; background:linear-gradient(180deg,var(--panel2),var(--panel1));}
-.arc{position:absolute; top:7%; left:0; right:0; text-align:center; font-weight:900; color:#fff; text-shadow:0 3px 0 #ff8fbf; letter-spacing:.4em}
-.penta{position:absolute; left:17%; top:18%; width:66%; height:38%; background:var(--cream);
-  clip-path:polygon(50% 0%,100% 38%,80% 100%,20% 100%,0% 38%);}
-.radar{position:absolute; inset:10% 10% 8% 10%;}
-.bar{position:absolute; left:12%; right:12%; bottom:32%; height:5.4%; background:var(--cream); border-radius:999px;
-  display:grid; place-items:center; font-weight:900;}
-.bubble{position:absolute; right:6%; bottom:9%; width:62%; min-height:16%; background:#fff; border:6px solid var(--ink); border-radius:22px;
-  display:flex; align-items:center; justify-content:center; padding:12px 14px; text-align:center; font-weight:700;}
-.boy{position:absolute; left:4%; bottom:5%; width:30%; pointer-events:none;}
-.link{position:absolute; right:6%; top:6%; background:#fff; border-radius:999px; padding:8px 12px; font-weight:900; text-decoration:none; color:#333; border:3px solid #000;}
+body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+.wrap{width:min(520px,94vw);margin:0 auto;padding:20px 0 32px}
+.screen{position:relative;width:100%;aspect-ratio:9/16;border-radius:28px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.08);background:linear-gradient(180deg,var(--p1),var(--p2))}
+.panel{position:absolute;inset:0;border-radius:42px;margin:5% 4%;background:linear-gradient(180deg,var(--p2),var(--p1))}
+.arc{position:absolute;top:7%;left:0;right:0;text-align:center;font-weight:900;color:#fff;text-shadow:0 3px 0 #ff8fbf;letter-spacing:.4em}
+.penta{position:absolute;left:17%;top:18%;width:66%;height:38%;background:var(--cream);clip-path:polygon(50% 0%,100% 38%,80% 100%,20% 100%,0% 38%)}
+.radar{position:absolute;inset:10% 10% 8% 10%}
+.bar{position:absolute;left:12%;right:12%;bottom:32%;height:5.4%;background:var(--cream);border-radius:999px;display:grid;place-items:center;font-weight:900}
+.bubble{position:absolute;right:6%;bottom:9%;width:62%;min-height:16%;background:#fff;border:6px solid var(--ink);border-radius:22px;display:flex;align-items:center;justify-content:center;padding:12px 14px;text-align:center;font-weight:700}
+.boy{position:absolute;left:4%;bottom:5%;width:30%;pointer-events:none}
+.link{position:absolute;right:6%;top:6%;background:#fff;border-radius:999px;padding:8px 12px;font-weight:900;text-decoration:none;color:#333;border:3px solid #000}
 </style>
 </head>
 <body>
 <main class="wrap">
   <section class="screen">
     <div class="panel"></div>
-
     <div class="arc" aria-hidden="true">診　断　結　果</div>
+
     <div class="penta"><canvas id="radar" class="radar"></canvas></div>
     <div id="typeBar" class="bar">相性タイプ：—</div>
     <div id="summary" class="bubble">—</div>
-    <img class="boy" src="./web/img/char-boy.PNG" alt="キャラクター">
+    <img class="boy" src="/web/img/char-boy.PNG" alt="キャラクター">
 
     <a id="toDetail" class="link" href="#">詳細を見る →</a>
   </section>
 </main>
 
 <script>
-const API = (window.API_BASE||'').replace(/\/+$/,'');
-const q = new URL(location.href).searchParams;
-const a = q.get('a'), b = q.get('b');
-if(!a || !b){ location.replace('./index.html'); }
+const API=(window.API_BASE||'').replace(/\/+$/,'');
+const q=new URL(location.href).searchParams; const a=q.get('a'), b=q.get('b');
+if(!a||!b){ location.replace('./index.html'); }
 
 async function fetchScore(a,b){
-  // 旧/新どちらのバックエンドにも投げ分け
-  const try1 = await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({typeA:a,typeB:b})});
-  let j = await try1.json();
-  if(!try1.ok){
-    const try2 = await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a,b})});
-    j = await try2.json();
-    if(!try2.ok) throw new Error(j.detail||'score error');
+  // 旧/新の両方に対応
+  let r=await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({typeA:a,typeB:b})});
+  let j=await r.json();
+  if(!r.ok){
+    r=await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a,b})});
+    j=await r.json();
+    if(!r.ok) throw new Error(j.detail||'score error');
   }
   return j;
 }
-
 function scoresToArray(p){
-  const s = p.scores||{};
-  const v = k => s[k] ?? s[{共感:'empathy',調和:'harmony',依存:'dependence',刺激:'stimulation',信頼:'trust'}[k]];
-  return [
-    +(s.empathy ?? s['共感'] ?? 0),
-    +(s.harmony ?? s['調和'] ?? 0),
-    +(s.dependence ?? s['依存'] ?? 0),
-    +(s.stimulation ?? s['刺激'] ?? 0),
-    +(s.trust ?? s['信頼'] ?? 0),
-  ].map(x => x>1 ? x/100 : x);
+  const s=p.scores||{};
+  const v=k=>s[k] ?? s[{共感:'empathy',調和:'harmony',依存:'dependence',刺激:'stimulation',信頼:'trust'}[k]];
+  return [v('empathy')??0,v('harmony')??0,v('dependence')??0,v('stimulation')??0,v('trust')??0].map(x=>x>1?x/100:x);
 }
 
-(async ()=>{
+(async()=>{
   try{
-    const p = await fetchScore(a,b);
-    const label   = p.label || p?.micro?.type || '—';
-    const summary = p.summary || p?.copy?.catch || '—';
-    document.getElementById('typeBar').textContent = '相性タイプ：' + label;
-    document.getElementById('summary').textContent = summary;
+    const p=await fetchScore(a,b);
+    document.getElementById('typeBar').textContent='相性タイプ：'+(p.label||p?.micro?.type||'—');
+    document.getElementById('summary').textContent=p.summary||p?.copy?.catch||'—';
 
-    const ctx = document.getElementById('radar');
-    new Chart(ctx,{
+    new Chart(document.getElementById('radar'),{
       type:'radar',
-      data:{ labels:['共感','調和','依存','刺激','信頼'], datasets:[{ data:scoresToArray(p), fill:true, pointRadius:0, borderWidth:2 }]},
-      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ r:{ suggestedMin:0, suggestedMax:1, ticks:{display:false}, grid:{circular:true} } } }
+      data:{labels:['共感','調和','依存','刺激','信頼'],datasets:[{data:scoresToArray(p),fill:true,pointRadius:0,borderWidth:2}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{r:{suggestedMin:0,suggestedMax:1,ticks:{display:false},grid:{circular:true}}}}
     });
 
     document.getElementById('toDetail').href = `./detail.html?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
-  }catch(e){
-    alert('通信エラー：結果を取得できませんでした');
-  }
+  }catch(e){ alert('通信エラー：結果を取得できませんでした'); }
 })();
 </script>
 </body>
