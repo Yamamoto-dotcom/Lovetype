@@ -4,24 +4,23 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>LOVE TYPE｜詳細</title>
-<script>window.API_BASE = window.API_BASE || 'http://localhost:8000';</script>
+<script src="/web/config.js"></script>
 <style>
-:root{ --panel1:#ffc5dd; --panel2:#ffb9d4; --cream:#fff7ee; --ink:#111; }
+:root{ --p1:#ffc5dd; --p2:#ffb9d4; --cream:#fff7ee }
 *{box-sizing:border-box} html,body{height:100%}
-body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
-.wrap{width:min(520px,94vw);margin:0 auto;padding:20px 0 32px;}
-.screen{position:relative; width:100%; aspect-ratio:9/16; border-radius:28px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.08);
-  background:linear-gradient(180deg,var(--panel1),var(--panel2));}
-.panel{position:absolute; inset:0; border-radius:42px; margin:5% 4%; background:linear-gradient(180deg,var(--panel2),var(--panel1));}
-.card-top{position:absolute; left:7%; right:7%; top:6.5%; height:28%; background:var(--cream); border-radius:28px; padding:14px; overflow:auto;}
-.bubble{position:absolute; right:10%; top:40%; width:56%; min-height:18%; background:#fff; border:6px solid var(--ink); border-radius:22px;}
-.card-bottom{position:absolute; left:10%; right:10%; bottom:6%; height:28%; background:var(--cream); border-radius:28px; padding:14px; display:grid; place-items:center; text-align:center;}
-.da{position:absolute; right:2%; bottom:36%; width:35%; pointer-events:none;}
-.dog{position:absolute; left:7%; bottom:7%; width:23%; pointer-events:none;}
-.meter{ width:88%; height:16px; background:#fff; border:3px solid #000; border-radius:999px; overflow:hidden; margin:8px auto 0; }
-.meter > i{ display:block; height:100%; width:0%; background:#ff8fbf; }
-.small{ font-size:12px; opacity:.75;}
-.back{position:absolute; left:6%; top:6%; background:#fff; border-radius:999px; padding:8px 12px; font-weight:900; text-decoration:none; color:#333; border:3px solid #000;}
+body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+.wrap{width:min(520px,94vw);margin:0 auto;padding:20px 0 32px}
+.screen{position:relative;width:100%;aspect-ratio:9/16;border-radius:28px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.08);background:linear-gradient(180deg,var(--p1),var(--p2))}
+.panel{position:absolute;inset:0;border-radius:42px;margin:5% 4%;background:linear-gradient(180deg,var(--p2),var(--p1))}
+.card-top{position:absolute;left:7%;right:7%;top:6.5%;height:28%;background:var(--cream);border-radius:28px;padding:14px;overflow:auto}
+.bubble{position:absolute;right:10%;top:40%;width:56%;min-height:18%;background:#fff;border:6px solid #111;border-radius:22px}
+.card-bottom{position:absolute;left:10%;right:10%;bottom:6%;height:28%;background:var(--cream);border-radius:28px;padding:14px;display:grid;place-items:center;text-align:center}
+.da{position:absolute;right:2%;bottom:36%;width:35%;pointer-events:none}
+.dog{position:absolute;left:7%;bottom:7%;width:23%;pointer-events:none}
+.meter{width:88%;height:16px;background:#fff;border:3px solid #000;border-radius:999px;overflow:hidden;margin:8px auto 0}
+.meter i{display:block;height:100%;width:0;background:#ff8fbf}
+.small{font-size:12px;opacity:.75}
+.back{position:absolute;left:6%;top:6%;background:#fff;border-radius:999px;padding:8px 12px;font-weight:900;text-decoration:none;color:#333;border:3px solid #000}
 </style>
 </head>
 <body>
@@ -34,7 +33,7 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
     <!-- 上：詳細本文 -->
     <div id="detailBody" class="card-top">読み込み中…</div>
 
-    <!-- 中央：黒縁（空白のまま） -->
+    <!-- 中央：黒縁（空白のまま／将来用） -->
     <div class="bubble" aria-hidden="true"></div>
 
     <!-- 下：確信度 -->
@@ -44,47 +43,40 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
       <div class="small">※アルゴリズムの目安値</div>
     </div>
 
-    <img class="da"  src="./web/img/char-angeldevil.PNG" alt="キャラクター">
-    <img class="dog" src="./web/img/char-dog.PNG"        alt="犬">
+    <img class="da"  src="/web/img/char-angeldevil.PNG" alt="キャラクター">
+    <img class="dog" src="/web/img/char-dog.PNG"        alt="犬">
   </section>
 </main>
 
 <script>
-const API = (window.API_BASE||'').replace(/\/+$/,'');
-const q = new URL(location.href).searchParams;
-const a = q.get('a'), b = q.get('b');
-if(!a || !b){ location.replace('./index.html'); }
+const API=(window.API_BASE||'').replace(/\/+$/,'');
+const q=new URL(location.href).searchParams; const a=q.get('a'), b=q.get('b');
+if(!a||!b){ location.replace('./index.html'); }
 
 async function fetchScore(a,b){
-  const try1 = await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({typeA:a,typeB:b})});
-  let j = await try1.json();
-  if(!try1.ok){
-    const try2 = await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a,b})});
-    j = await try2.json();
-    if(!try2.ok) throw new Error(j.detail||'score error');
+  let r=await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({typeA:a,typeB:b})});
+  let j=await r.json();
+  if(!r.ok){
+    r=await fetch(API+'/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a,b})});
+    j=await r.json();
+    if(!r.ok) throw new Error(j.detail||'score error');
   }
   return j;
 }
+function toPercent(x){ if(x==null) return 0; if(typeof x==='number' && x<=1) return Math.round(x*100); return Math.round(+x)||0; }
 
-function toPercent(conf){
-  if(conf==null) return 0;
-  if(typeof conf==='number' && conf<=1) return Math.round(conf*100);
-  return Math.round(+conf)||0;
-}
-
-(async ()=>{
+(async()=>{
   try{
-    const p = await fetchScore(a,b);
-    const body = p?.copy?.body || p.detail || '—';
-    document.getElementById('detailBody').textContent = body;
-
-    const conf = toPercent(p.confidence ?? p.meta?.confidence);
-    document.getElementById('confNum').textContent = conf + '%';
-    document.getElementById('barFill').style.width = Math.max(0,Math.min(conf,100)) + '%';
-  }catch(e){
-    alert('通信エラー：詳細を取得できませんでした');
-  }
+    const p=await fetchScore(a,b);
+    document.getElementById('detailBody').textContent = p?.copy?.body || p.detail || '—';
+    const c = toPercent(p.confidence ?? p.meta?.confidence);
+    document.getElementById('confNum').textContent = c + '%';
+    document.getElementById('barFill').style.width = Math.max(0,Math.min(c,100)) + '%';
+  }catch(e){ alert('通信エラー：詳細を取得できませんでした'); }
 })();
+</script>
+</body>
+</html>
 </script>
 </body>
 </html>
