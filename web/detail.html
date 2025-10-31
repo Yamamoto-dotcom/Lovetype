@@ -54,9 +54,19 @@ body{margin:0;background:#ffe9f4;font-family:system-ui,-apple-system,Segoe UI,Ro
 .dog{position:absolute;left:4%;bottom:7%;width:var(--dog-col);pointer-events:none;z-index:2}
 
 /* 戻る */
+/* 戻る（より上に、ノッチにも配慮） */
 .back{
-  position:absolute;left:6%;top:6%;background:#fff;border-radius:999px;padding:8px 12px;
-  font-weight:900;text-decoration:none;color:#333;border:3px solid #000;z-index:3
+  position:absolute;
+  left:6%;
+  top:calc(2% + env(safe-area-inset-top, 0px)); /* ← 6% → 2% に上げた */
+  background:#fff;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:900;
+  text-decoration:none;
+  color:#333;
+  border:3px solid #000;
+  z-index:3; /* 最前面を維持 */
 }
 
 /* 細い端末の保険 */
